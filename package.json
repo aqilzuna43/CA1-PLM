@@ -1,0 +1,28 @@
+{
+  "name": "ca1-plm",
+  "version": "1.0.0",
+  "description": "Lightweight Product Lifecycle Management tool for Celestica CA1",
+  "scripts": {
+    "login": "clasp login",
+    "push": "clasp push",
+    "pull": "clasp pull",
+    "deploy": "bash scripts/deploy.sh",
+    "backup": "bash scripts/backup.sh",
+    "open": "clasp open"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aqilzuna43/CA1-PLM.git"
+  },
+  "keywords": [
+    "PLM",
+    "BOM",
+    "ECR",
+    "Google Apps Script"
+  ],
+  "author": "Aqil",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@google/clasp": "^2.4.2"
+  }
+}

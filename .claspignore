@@ -1,0 +1,18 @@
+# Exclude from clasp push
+**/**
+!src/**/*.gs
+!appsscript.json
+
+# Specifically exclude
+src/legacy/**
+tests/**
+scripts/**
+docs/**
+node_modules/**
+.git/**
+*.md
+*.sh
+package.json
+package-lock.json
+.gitignore
+.claspignore

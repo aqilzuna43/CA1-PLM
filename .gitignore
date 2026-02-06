@@ -1,0 +1,38 @@
+# Apps Script
+.clasp.json
+.clasprc.json
+
+# Dependencies
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build output
+dist/
+build/
+
+# Environment
+.env
+.env.local
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Google Apps Script cache
+.gs~
