@@ -36,3 +36,9 @@ build/
 
 # Google Apps Script cache
 .gs~
+
+# Claude Code
+.claude/
+
+# Toolkits
+everything-claude-code/

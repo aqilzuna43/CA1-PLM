@@ -1,10 +1,14 @@
-# Exclude from clasp push
+# Clasp ignore for Master BOM script project
+# Push modular BOM tools, utility modules, and manifest
 **/**
-!src/**/*.gs
+!src/bom/*.gs
+!src/utils/*.gs
 !appsscript.json
 
-# Specifically exclude
-src/legacy/**
+# Explicitly exclude ECR Form (belongs to a separate script project)
+src/legacy/ECR_FORM.gs
+
+# Exclude non-deployable files
 tests/**
 scripts/**
 docs/**
@@ -12,7 +16,7 @@ node_modules/**
 .git/**
 *.md
 *.sh
-package.json
-package-lock.json
+*.json
+!appsscript.json
 .gitignore
 .claspignore

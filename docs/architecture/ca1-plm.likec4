@@ -1,0 +1,495 @@
+// ============================================================
+// CA1-PLM System Architecture — LikeC4 Definition
+// ============================================================
+
+specification {
+
+  // ── Element Kinds ──
+  element actor {
+    style {
+      shape person
+      color amber
+    }
+  }
+
+  element system {
+    style {
+      shape rectangle
+      color indigo
+    }
+  }
+
+  element platform {
+    style {
+      shape rectangle
+      color slate
+    }
+  }
+
+  element spreadsheet {
+    style {
+      shape storage
+      color green
+    }
+  }
+
+  element tab {
+    style {
+      shape rectangle
+      color green
+    }
+  }
+
+  element module {
+    style {
+      shape rectangle
+      color sky
+    }
+  }
+
+  element utility {
+    style {
+      shape rectangle
+      color slate
+    }
+  }
+
+  element trigger {
+    style {
+      shape queue
+      color amber
+    }
+  }
+
+  element externalSystem {
+    style {
+      shape rectangle
+      color red
+    }
+  }
+
+  // ── Relationship Kinds ──
+  relationship async
+  relationship reads
+  relationship writes
+  relationship triggers
+
+  // ── Tags ──
+  tag realtime
+  tag batch
+  tag manual
+  tag automated
+  tag legacy
+  tag admin-only
+
+}
+
+// ============================================================
+// MODEL
+// ============================================================
+
+model {
+
+  // ── Actors ──
+  bomEngineer = actor 'BOM Engineer' {
+    description 'Manages BOM structure, runs tools, reviews data'
+  }
+
+  ecrSubmitter = actor 'ECR Submitter' {
+    description 'Submits Engineering Change Requests via ECR Form'
+  }
+
+  admin = actor 'Admin' {
+    description 'Approves and commits ECR changes to Master BOM'
+  }
+
+  fabricator = actor 'Fabricator' {
+    description 'Receives filtered Fabricator BOMs for manufacturing'
+  }
+
+  // ── External Systems ──
+  pdmSystem = externalSystem 'PDM System' {
+    description 'External Product Data Management system (CSV export)'
+    technology 'CSV Export'
+  }
+
+  // ── Google Workspace Platform ──
+  googleWorkspace = platform 'Google Workspace' {
+
+    gasRuntime = system 'Google Apps Script Runtime' {
+      description 'V8 serverless execution environment for all PLM logic'
+      technology 'Google Apps Script (ES6+)'
+    }
+
+    // ── Master BOM Spreadsheet (The Hub) ──
+    masterSpreadsheet = spreadsheet '12016271_CA1 Mini BoM' {
+      description 'Central BOM spreadsheet — single source of truth'
+
+      masterTab = tab 'MASTER' {
+        description 'Hierarchical BOM structure with level-based parent/child rows'
+      }
+
+      itemsTab = tab 'ITEMS' {
+        description 'Part dictionary: Item Number, Description, Rev, Lifecycle'
+      }
+
+      amlTab = tab 'AML' {
+        description 'Approved Manufacturer List: Item Number, Mfr Name, MPN'
+      }
+
+      ecrAffectedItems = tab 'ECR_Affected_Items' {
+        description 'ECR submission log with full change details'
+      }
+
+      revHistory = tab 'Rev_History' {
+        description 'Per-item revision change log with timestamps'
+      }
+
+      ecoHistory = tab 'ECO History' {
+        description 'ECO comparison log with counts and related ECRs'
+      }
+
+      inputPdm = tab 'INPUT_PDM' {
+        description 'Staging area for PDM CSV data paste'
+      }
+    }
+
+    // ── ECR Form Spreadsheet (The Spoke) ──
+    ecrFormSpreadsheet = spreadsheet 'ECR Form' {
+      description 'Satellite spreadsheet for Engineering Change Request submissions'
+
+      ecrAffectedSheet = tab 'Affected_Items' {
+        description 'Current vs. New redline pattern for change tracking'
+      }
+
+      ecrAvlChanges = tab 'AVL_Changes' {
+        description 'AVL add/remove/replace change requests'
+      }
+    }
+  }
+
+  // ── PLM Application (GAS Modules) ──
+  plmApp = system 'CA1-PLM Application' {
+    description 'Google Apps Script PLM system — 13 BOM modules + 3 utilities'
+
+    // ── Core Modules ──
+    configModule = module 'Config.gs' {
+      description 'Central configuration: BOM_CONFIG, COL constants, readSheetData()'
+    }
+
+    menuModule = module 'Menu.gs' {
+      description 'Custom menu UI: 18 tools organized in 6 submenus via onOpen()'
+    }
+
+    bomMapModule = module 'BomMap.gs' {
+      description 'Core hierarchy parser: buildBOMMap() converts flat rows to location-keyed Map'
+    }
+
+    helpersModule = module 'Helpers.gs' {
+      description 'Shared utilities: promptWithValidation(), getColumnIndexes(), calculatePdmLevel()'
+    }
+
+    // ── Data Integrity Modules ──
+    validationModule = module 'Validation.gs' {
+      #realtime
+      description 'Real-time 3-layer validation: L1 onEdit, L2 onChange, L3 batch'
+    }
+
+    reconcileModule = module 'Reconcile.gs' {
+      #batch
+      description 'Batch full-sync: AML row repair + data sync + sheet protection'
+    }
+
+    // ── Analysis & Comparison Modules ──
+    comparisonModule = module 'Comparison.gs' {
+      description 'BOM diff tools: ECO-linked detailed comparison + PDM comparison'
+    }
+
+    pdmImportModule = module 'PdmImport.gs' {
+      description 'PDM children import (grafting): auto-adjusts hierarchy levels'
+    }
+
+    fabricatorModule = module 'Fabricator.gs' {
+      description 'Generates flat Fabricator BOMs: BUY/REF filtering for manufacturing'
+    }
+
+    auditModule = module 'Audit.gs' {
+      description '10-check comprehensive validation: lifecycle, structure, duplicates, circular deps'
+    }
+
+    analysisModule = module 'Analysis.gs' {
+      description 'Where-Used analysis, Dashboard generation, Master Lists'
+    }
+
+    // ── Release & History Modules ──
+    releaseModule = module 'Release.gs' {
+      #admin-only
+      description 'Finalize & Release BOM, Set Effectivity Dates, pre-release audit'
+    }
+
+    historyModule = module 'History.gs' {
+      description 'Change logging: logRevisionChange(), logECOComparison()'
+    }
+
+    // ── Utility Services ──
+    sheetService = utility 'SheetService.gs' {
+      description 'Google Sheets API wrapper with caching: getSheetData(), batchWrite()'
+    }
+
+    cacheService = utility 'CacheService.gs' {
+      description 'Performance optimization: CacheManager with TTL and 100KB limit'
+    }
+
+    constantsUtil = utility 'Constants.gs' {
+      description 'Utility config: UTIL_CONFIG (cache keys, batch size, TTL)'
+    }
+
+    // ── Triggers ──
+    onEditTrigger = trigger 'onEdit (L1)' {
+      #realtime #automated
+      description 'Simple trigger: cell-level validation on MASTER, <30s budget'
+    }
+
+    onChangeTrigger = trigger 'onChangeWatchdog (L2)' {
+      #realtime #automated
+      description 'Installable trigger: row insert/delete structural validation, <6min budget'
+    }
+  }
+
+  // ── ECR Automation (Separate GAS Project) ──
+  ecrApp = system 'ECR Form Automation' {
+    #legacy
+    description 'Separate GAS project: ECR submission, validation, and commitToMaster'
+
+    ecrPopulate = module 'populateCurrentData()' {
+      description 'Auto-fills Current columns from Master BOM for redline comparison'
+    }
+
+    ecrSubmit = module 'submitComprehensiveECR()' {
+      description 'Validates and submits ECR to ECR_Affected_Items log'
+    }
+
+    ecrCommit = module 'commitToMaster()' {
+      #admin-only
+      description 'Password-protected: executes approved changes on MASTER, ITEMS, AML'
+    }
+  }
+
+
+  // ============================================================
+  // RELATIONSHIPS
+  // ============================================================
+
+  // ── Actor Interactions ──
+  bomEngineer -> plmApp 'uses BOM tools via custom menu'
+  bomEngineer -> googleWorkspace.masterSpreadsheet 'views and edits BOM data'
+  ecrSubmitter -> ecrApp 'submits change requests'
+  ecrSubmitter -> googleWorkspace.ecrFormSpreadsheet 'fills ECR form'
+  admin -> ecrApp.ecrCommit 'approves and commits changes'
+  fabricator -> googleWorkspace.masterSpreadsheet 'receives generated Fabricator BOMs'
+
+  // ── PDM Integration ──
+  pdmSystem -> googleWorkspace.masterSpreadsheet.inputPdm 'CSV data pasted manually'
+  plmApp.pdmImportModule -> googleWorkspace.masterSpreadsheet.inputPdm 'reads PDM data'
+  plmApp.pdmImportModule -> googleWorkspace.masterSpreadsheet.masterTab 'grafts children into BOM hierarchy'
+  plmApp.comparisonModule -> googleWorkspace.masterSpreadsheet.inputPdm 'reads external BOM for comparison'
+
+  // ── Module → Spreadsheet Data Flows ──
+  plmApp.configModule -> googleWorkspace.masterSpreadsheet 'readSheetData() reads all tabs'
+  plmApp.validationModule -> googleWorkspace.masterSpreadsheet.itemsTab 'buildItemsLookup_() reads part data'
+  plmApp.validationModule -> googleWorkspace.masterSpreadsheet.amlTab 'buildAmlLookup_() reads AML data'
+  plmApp.validationModule -> googleWorkspace.masterSpreadsheet.masterTab 'auto-populates managed columns'
+  plmApp.reconcileModule -> googleWorkspace.masterSpreadsheet.masterTab 'batch syncs all managed data'
+  plmApp.comparisonModule -> googleWorkspace.masterSpreadsheet.ecrAffectedItems 'reads ECR-to-change links'
+  plmApp.historyModule -> googleWorkspace.masterSpreadsheet.revHistory 'logs revision changes'
+  plmApp.historyModule -> googleWorkspace.masterSpreadsheet.ecoHistory 'logs ECO comparisons'
+  plmApp.fabricatorModule -> googleWorkspace.masterSpreadsheet.masterTab 'reads BOM for BUY/REF filtering'
+  plmApp.auditModule -> googleWorkspace.masterSpreadsheet.masterTab 'runs 10-check validation'
+  plmApp.analysisModule -> googleWorkspace.masterSpreadsheet.masterTab 'analyzes BOM hierarchy'
+  plmApp.releaseModule -> googleWorkspace.masterSpreadsheet.masterTab 'finalizes and protects released BOM'
+
+  // ── ECR Form → Master Data Flows ──
+  ecrApp.ecrPopulate -[reads]-> googleWorkspace.masterSpreadsheet.itemsTab 'reads current part data'
+  ecrApp.ecrPopulate -[reads]-> googleWorkspace.masterSpreadsheet.amlTab 'reads current AML data'
+  ecrApp.ecrPopulate -[reads]-> googleWorkspace.masterSpreadsheet.masterTab 'validates parent/child relationships'
+  ecrApp.ecrSubmit -[writes]-> googleWorkspace.masterSpreadsheet.ecrAffectedItems 'logs ECR submission'
+  ecrApp.ecrCommit -[writes]-> googleWorkspace.masterSpreadsheet.masterTab 'applies approved changes'
+  ecrApp.ecrCommit -[writes]-> googleWorkspace.masterSpreadsheet.itemsTab 'updates part data'
+  ecrApp.ecrCommit -[writes]-> googleWorkspace.masterSpreadsheet.amlTab 'updates AML data'
+
+  // ── Trigger Flows ──
+  plmApp.onEditTrigger -[triggers]-> plmApp.validationModule 'fires on MASTER cell edit'
+  plmApp.onChangeTrigger -[triggers]-> plmApp.validationModule 'fires on row insert/delete'
+
+  // ── Internal Module Dependencies ──
+  plmApp.bomMapModule -> plmApp.configModule 'uses BOM_CONFIG and COL'
+  plmApp.bomMapModule -> plmApp.helpersModule 'uses calculatePdmLevel()'
+  plmApp.comparisonModule -> plmApp.bomMapModule 'uses buildBOMMap()'
+  plmApp.comparisonModule -> plmApp.historyModule 'logs ECO comparisons'
+  plmApp.fabricatorModule -> plmApp.bomMapModule 'uses buildBOMMap()'
+  plmApp.auditModule -> plmApp.bomMapModule 'uses buildBOMMap()'
+  plmApp.pdmImportModule -> plmApp.bomMapModule 'uses buildBOMMap()'
+  plmApp.reconcileModule -> plmApp.validationModule 'uses buildItemsLookup_(), buildAmlLookup_()'
+  plmApp.sheetService -> plmApp.cacheService 'cache-first data reads'
+  plmApp.configModule -> plmApp.sheetService 'delegates Sheet API calls'
+
+  // ── Runtime ──
+  plmApp -> googleWorkspace.gasRuntime 'executes on'
+  ecrApp -> googleWorkspace.gasRuntime 'executes on'
+
+}
+
+
+// ============================================================
+// VIEWS
+// ============================================================
+
+views {
+
+  // ── System Context (Top-Level Overview) ──
+  view index {
+    title 'CA1-PLM System Context'
+    description 'High-level overview of the CA1 PLM system, actors, and external integrations'
+
+    include
+      bomEngineer,
+      ecrSubmitter,
+      admin,
+      fabricator,
+      pdmSystem,
+      plmApp,
+      ecrApp,
+      googleWorkspace.masterSpreadsheet,
+      googleWorkspace.ecrFormSpreadsheet
+
+    style googleWorkspace.masterSpreadsheet {
+      color green
+    }
+    style googleWorkspace.ecrFormSpreadsheet {
+      color green
+    }
+  }
+
+  // ── Hub-and-Spoke Data Architecture ──
+  view hubAndSpoke {
+    title 'Hub-and-Spoke: Master BOM + ECR'
+    description 'Data architecture showing the Master spreadsheet as the hub with ECR form as spoke'
+
+    include
+      googleWorkspace.masterSpreadsheet,
+      googleWorkspace.masterSpreadsheet.*,
+      googleWorkspace.ecrFormSpreadsheet,
+      googleWorkspace.ecrFormSpreadsheet.*,
+      ecrApp,
+      ecrApp.*,
+      plmApp
+
+    style googleWorkspace.masterSpreadsheet.* {
+      color green
+    }
+    style googleWorkspace.ecrFormSpreadsheet.* {
+      color sky
+    }
+  }
+
+  // ── BOM Tool Modules ──
+  view bomModules {
+    title 'BOM Tool Modules'
+    description 'All 13 BOM modules and 3 utility services with their dependencies'
+
+    include
+      plmApp,
+      plmApp.*
+
+    style plmApp.configModule {
+      color indigo
+    }
+    style plmApp.bomMapModule {
+      color indigo
+    }
+  }
+
+  // ── Data Integrity & Validation ──
+  view dataIntegrity {
+    title '3-Layer Validation Architecture'
+    description 'Real-time and batch validation layers protecting BOM data integrity'
+
+    include
+      bomEngineer,
+      plmApp.onEditTrigger,
+      plmApp.onChangeTrigger,
+      plmApp.validationModule,
+      plmApp.reconcileModule,
+      plmApp.auditModule,
+      googleWorkspace.masterSpreadsheet.masterTab,
+      googleWorkspace.masterSpreadsheet.itemsTab,
+      googleWorkspace.masterSpreadsheet.amlTab
+  }
+
+  // ── ECR Workflow ──
+  view ecrWorkflow {
+    title 'ECR Submission and Commit Workflow'
+    description 'Engineering Change Request flow from submission to Master BOM update'
+
+    include
+      ecrSubmitter,
+      admin,
+      ecrApp,
+      ecrApp.*,
+      googleWorkspace.ecrFormSpreadsheet,
+      googleWorkspace.ecrFormSpreadsheet.*,
+      googleWorkspace.masterSpreadsheet.masterTab,
+      googleWorkspace.masterSpreadsheet.itemsTab,
+      googleWorkspace.masterSpreadsheet.amlTab,
+      googleWorkspace.masterSpreadsheet.ecrAffectedItems
+  }
+
+  // ── PDM Integration ──
+  view pdmIntegration {
+    title 'PDM Integration Flow'
+    description 'External PDM system data import and comparison workflow'
+
+    include
+      pdmSystem,
+      bomEngineer,
+      plmApp.pdmImportModule,
+      plmApp.comparisonModule,
+      plmApp.bomMapModule,
+      googleWorkspace.masterSpreadsheet.inputPdm,
+      googleWorkspace.masterSpreadsheet.masterTab
+  }
+
+  // ── Module Dependency Graph ──
+  view moduleDeps {
+    title 'Module Dependency Graph'
+    description 'Internal dependencies between BOM modules and utility services'
+
+    include
+      plmApp.configModule,
+      plmApp.bomMapModule,
+      plmApp.helpersModule,
+      plmApp.comparisonModule,
+      plmApp.fabricatorModule,
+      plmApp.auditModule,
+      plmApp.pdmImportModule,
+      plmApp.validationModule,
+      plmApp.reconcileModule,
+      plmApp.historyModule,
+      plmApp.sheetService,
+      plmApp.cacheService
+
+    style plmApp.configModule {
+      color indigo
+    }
+    style plmApp.bomMapModule {
+      color indigo
+    }
+    style plmApp.sheetService {
+      color slate
+    }
+    style plmApp.cacheService {
+      color slate
+    }
+  }
+
+}

@@ -1,49 +1,12 @@
 /**
- * Configuration constants for CA1-PLM
+ * Shared constants for CA1-PLM utilities
+ *
+ * NOTE: The primary configuration lives in CA1_MINI_BOM.gs as BOM_CONFIG.
+ * This file provides supplementary constants for the utility layer (cache, performance).
+ * Do NOT redeclare BOM_CONFIG or COL here — they are defined in the legacy module.
  */
 
-const CONFIG = {
-  // Spreadsheet IDs
-  MASTER_SHEET_ID: '12016271_CA1_Mini_BoM', // Update with actual ID
-  
-  // Sheet names
-  SHEETS: {
-    ITEMS: 'ITEMS',
-    AML: 'AML',
-    MASTER: 'MASTER'
-  },
-  
-  // Column indices (0-based)
-  COLUMNS: {
-    MASTER: {
-      LEVEL: 0,
-      PART_NUMBER: 1,
-      DESCRIPTION: 2,
-      QUANTITY: 3,
-      REF_DES: 4,
-      REVISION: 5
-    },
-    ITEMS: {
-      PART_NUMBER: 0,
-      DESCRIPTION: 1,
-      REVISION: 2,
-      LIFECYCLE: 3
-    },
-    AML: {
-      PART_NUMBER: 0,
-      MFR_NAME: 1,
-      MFR_PART_NUMBER: 2
-    }
-  },
-  
-  // ECR Actions
-  ECR_ACTIONS: {
-    ADD: 'ADD',
-    REMOVE: 'REMOVE',
-    QTY_CHANGE: 'QTY CHANGE',
-    REV_ROLL: 'REV ROLL'
-  },
-  
+const UTIL_CONFIG = {
   // Cache settings
   CACHE: {
     DURATION: 600, // 10 minutes in seconds
@@ -53,7 +16,7 @@ const CONFIG = {
       MASTER: 'master_cache'
     }
   },
-  
+
   // Performance settings
   PERFORMANCE: {
     BATCH_SIZE: 100,
